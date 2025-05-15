@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('contribuyentes', function (Blueprint $table) {
             $table->string('ruc', 15)->primary();
-            $table->string('nombre_o_razon_social', 100);
+            $table->string('nombre_o_razon_social', 150);
             $table->unsignedBigInteger('estado_del_contribuyente');
-            
+
             // Definir la clave foránea
             $table->foreign('estado_del_contribuyente')
                   ->references('id')
@@ -32,7 +32,7 @@ return new class extends Migration
         Schema::table('contribuyentes', function (Blueprint $table) {
             $table->dropForeign(['estado_del_contribuyente']);
         });
-        
+
         Schema::dropIfExists('contribuyentes');
     }
 };
