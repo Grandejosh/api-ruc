@@ -79,7 +79,7 @@ if __name__ == '__main__':
     # Configuración
     input_file = 'padron_reducido_ruc.txt'  # Cambiar por tu archivo de entrada
     output_folder = 'partes'                # Carpeta de salida
-    max_size_mb = 50                        # Tamaño máximo por archivo (MB)
+    max_size_mb = 40                        # Tamaño máximo por archivo (MB)
     
     # Ejecutar división
     split_csv(input_file, output_folder, max_size_mb)

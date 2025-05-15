@@ -11,7 +11,7 @@ class CSVtoMySQLProcessor:
             'host': 'localhost',
             'database': 'api_ruc',
             'user': 'root',
-            'password': '',
+            'password': '12345AracodePeru',
             'autocommit': False
         }
         self.connection = None
@@ -31,6 +31,9 @@ class CSVtoMySQLProcessor:
             'BAJA PROVISIONAL': 10,
             'OTROS OBLIGADOS': 11
         }
+        
+        # Aumentar el límite de tamaño de campo para CSV
+        csv.field_size_limit(1024 * 1024)  # 1MB
 
     def connect_to_db(self):
         """Establece conexión con la base de datos"""
@@ -62,46 +65,39 @@ class CSVtoMySQLProcessor:
             value = value[:max_length]
         return value
 
-    def get_or_create_estado_id(self, estado_str):
-        """Obtiene el ID de un estado o lo crea si no existe"""
+    def get_estado_id(self, estado_str):
+        """Obtiene el ID de un estado solo si está en los estados definidos"""
         if estado_str is None:
             return 12  # Valor por defecto para estados desconocidos
         
         estado_str = estado_str.strip().upper()
-        
-        # Buscar en los estados conocidos
-        if estado_str in self.estados_mapping:
-            return self.estados_mapping[estado_str]
-        
-        # Buscar en la base de datos
-        try:
-            self.cursor.execute("SELECT id FROM estados_contribuyente WHERE descripcion = %s", (estado_str,))
-            result = self.cursor.fetchone()
-            
-            if result:
-                return result['id']
-            
-            # Si no existe, crear nuevo estado
-            self.cursor.execute(
-                "INSERT INTO estados_contribuyente (descripcion) VALUES (%s)",
-                (estado_str,)
-            )
-            new_id = self.cursor.lastrowid
-            self.connection.commit()
-            
-            return new_id
-            
-        except Error as e:
-            print(f"Error al buscar/crear estado '{estado_str}': {e}")
-            return 12
+        return self.estados_mapping.get(estado_str, 12)
 
     def process_row(self, row):
         """Procesa una fila del CSV y devuelve los datos estructurados"""
         try:
+            ruc = self.clean_string(row[0], 15) if len(row) > 0 else None
+            nombre = self.clean_string(row[1], 150) if len(row) > 1 else None
+            estado_str = row[2] if len(row) > 2 else None
+            
+            # Verificar si el estado está en los definidos
+            estado_id = self.get_estado_id(estado_str)
+            
+            # Si el estado no está en los definidos, concatenar nombre y estado
+            if estado_id == 12 and estado_str and nombre:
+                estado_clean = self.clean_string(estado_str, 150)
+                if estado_clean:
+                    nombre_completo = f"{nombre}, {estado_clean}"
+                    # Asegurarse de que no exceda el límite de 150 caracteres
+                    nombre = nombre_completo[:150] if len(nombre_completo) > 150 else nombre_completo
+            elif estado_id == 12 and estado_str and not nombre:
+                # Si no hay nombre pero sí estado no reconocido, usar solo el estado
+                nombre = self.clean_string(estado_str, 150)
+            
             return {
-                'ruc': self.clean_string(row[0], 15) if len(row) > 0 else None,
-                'nombre_o_razon_social': self.clean_string(row[1], 90) if len(row) > 1 else None,
-                'estado_del_contribuyente': self.get_or_create_estado_id(row[2]) if len(row) > 2 else 12
+                'ruc': ruc,
+                'nombre_o_razon_social': nombre,
+                'estado_del_contribuyente': estado_id
             }
         except Exception as e:
             print(f"Error procesando fila: {row} - Error: {str(e)}")
@@ -129,25 +125,27 @@ class CSVtoMySQLProcessor:
             total_rows = inserted = updated = errors = 0
 
             with open(file_path, 'r', encoding=encoding, errors='replace') as csv_file:
+                # Primera pasada para contar líneas
                 total_lines = sum(1 for _ in csv_file)
                 csv_file.seek(0)
                 
+                # Configurar lector CSV con manejo de líneas largas
                 csv_reader = csv.reader(csv_file)
                 next(csv_reader)  # Saltar encabezado
 
                 for row in tqdm(csv_reader, total=total_lines-1, desc="Procesando"):
                     total_rows += 1
                     
-                    if len(row) < 3:
-                        errors += 1
-                        continue
-
-                    processed = self.process_row(row)
-                    if not processed or not processed['ruc']:
-                        errors += 1
-                        continue
-
                     try:
+                        if len(row) < 3:
+                            errors += 1
+                            continue
+
+                        processed = self.process_row(row)
+                        if not processed or not processed['ruc']:
+                            errors += 1
+                            continue
+
                         self.cursor.execute("SELECT 1 FROM contribuyentes WHERE ruc = %s", (processed['ruc'],))
                         exists = self.cursor.fetchone()
 
@@ -160,9 +158,14 @@ class CSVtoMySQLProcessor:
 
                         if total_rows % 1000 == 0:
                             self.connection.commit()
+                    except csv.Error as e:
+                        errors += 1
+                        print(f"\nError CSV en fila {total_rows}: {e}")
+                        continue
                     except Error as e:
                         errors += 1
-                        print(f"Error en DB para RUC {processed['ruc']}: {e}")
+                        print(f"\nError en DB para RUC {processed['ruc'] if processed else 'DESCONOCIDO'}: {e}")
+                        continue
 
             self.connection.commit()
 
