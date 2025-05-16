@@ -132,7 +132,7 @@ def api_help():
     return jsonify(help_info)
 
 @app.route('/consulta-ruc', methods=['GET'])
-@local_only
+################################################################@local_only
 def consulta_ruc():
     ruc = request.args.get('ruc')
     
@@ -182,7 +182,7 @@ def consulta_ruc():
             conn.close()
 
 @app.route('/consulta-dni', methods=['GET'])
-@local_only
+###############################################################@local_only
 def consulta_dni():
     dni = request.args.get('dni')
     
