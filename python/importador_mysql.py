@@ -129,8 +129,8 @@ class CSVtoMySQLProcessor:
                 total_lines = sum(1 for _ in csv_file)
                 csv_file.seek(0)
                 
-                # Configurar lector CSV con manejo de líneas largas
-                csv_reader = csv.reader(csv_file)
+                # Configurar lector CSV con separador ; y manejo de líneas largas
+                csv_reader = csv.reader(csv_file, delimiter=';')
                 next(csv_reader)  # Saltar encabezado
 
                 for row in tqdm(csv_reader, total=total_lines-1, desc="Procesando"):

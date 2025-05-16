@@ -19,7 +19,7 @@ def split_csv(input_file, output_folder, max_size_mb):
         # Abrir archivo de entrada con codificación UTF-8
         with open(input_file, 'r', encoding='utf-8') as f:
             # Leer encabezado y reemplazar | por ,
-            header = f.readline().replace('|', ',')
+            header = f.readline().replace('|', ';')
             
             part_num = 1
             current_size = 0
@@ -27,7 +27,7 @@ def split_csv(input_file, output_folder, max_size_mb):
             
             for line in f:
                 # Procesar línea y agregar al chunk actual
-                processed_line = line.replace('|', ',')
+                processed_line = line.replace('|', ';')
                 current_part.append(processed_line)
                 current_size += len(processed_line.encode('utf-8'))
 
@@ -47,14 +47,14 @@ def split_csv(input_file, output_folder, max_size_mb):
     except UnicodeDecodeError:
         # Si falla con UTF-8, intentar con latin1
         with open(input_file, 'r', encoding='latin1') as f:
-            header = f.readline().replace('|', ',')
+            header = f.readline().replace('|', ';')
             
             part_num = 1
             current_size = 0
             current_part = []
             
             for line in f:
-                processed_line = line.replace('|', ',')
+                processed_line = line.replace('|', ';')
                 current_part.append(processed_line)
                 current_size += len(processed_line.encode('utf-8'))
 
