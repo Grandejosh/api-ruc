@@ -9,7 +9,7 @@ app = Flask(__name__)
 DB_CONFIG = {
     'host': 'localhost',
     'user': 'root',
-    'password': '',
+    'password': '12345AracodePeru',
     'database': 'api_ruc'
 }
 
